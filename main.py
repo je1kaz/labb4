@@ -161,3 +161,33 @@ async def clear_history():
     return {"message": "Історія очищена", "count": 0}
 
 @app.get("/export")
+async def export_to_excel():
+    if not analysis_history:
+        return {"message": "Історія порожня"}
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Результати оцінки"
+    
+    # Заголовки
+    headers = ["Дата оцінки", "Метод тестування", "Бали"]
+    for crit in CRITERIA_NAMES:
+        headers.extend([f"{crit} (значення 1)", f"{crit} (значення 2)", f"{crit} (значення 3)"])
+    ws.append(headers)
+    
+    # Дані
+    for entry in analysis_history:
+        for result in entry["results"]:
+            row = [
+                entry["date"],
+                result["method"],
+                result["score"]
+            ]
+            # Додаємо значення критеріїв
+            for crit_values in entry["criteria"]:
+                row.extend(crit_values)
+            ws.append(row)
+    
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
