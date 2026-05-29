@@ -196,3 +196,4 @@ async def export_to_excel():
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     }
     return StreamingResponse(excel_file, headers=headers)
+    
