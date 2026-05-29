@@ -191,3 +191,8 @@ async def export_to_excel():
     excel_file = BytesIO()
     wb.save(excel_file)
     excel_file.seek(0)
+    headers = {
+        "Content-Disposition": "attachment; filename=analysis_history.xlsx",
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }
+    return StreamingResponse(excel_file, headers=headers)
