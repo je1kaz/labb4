@@ -86,3 +86,78 @@ def calculate_scores(criteria_values):
         elif val >= 95: scores[i] += 5
     
     return scores
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "criteria_count": range(CRITERIA_COUNT),
+        "values_count": range(VALUES_PER_CRITERION),
+        "criteria_names": CRITERIA_NAMES,
+        "test_methods": TEST_METHODS,
+        "result": "",
+        "form_data": {f"crit_{i}_val_{j}": "" for i in range(CRITERIA_COUNT) for j in range(VALUES_PER_CRITERION)},
+        "history_count": len(analysis_history)
+    })
+
+@app.post("/analyze", response_class=HTMLResponse)
+async def analyze_criteria(request: Request):
+    form_data = await request.form()
+    
+    # Збираємо значення
+    criteria_values = []
+    for criterion_idx in range(CRITERIA_COUNT):
+        values = []
+        for value_idx in range(VALUES_PER_CRITERION):
+            key = f"crit_{criterion_idx}_val_{value_idx}"
+            try:
+                value = float(form_data.get(key, 0))
+            except ValueError:
+                value = 0
+            values.append(value)
+        criteria_values.append(values)
+    
+    # Розраховуємо бали
+    scores = calculate_scores(criteria_values)
+    
+    # Формуємо список результатів і сортуємо його за балами (від більшого до меншого)
+    results = sorted(
+        zip(TEST_METHODS, scores),
+        key=lambda x: x[1],
+        reverse=True
+    )
+    
+    # Формуємо текст результату
+    result_text = "Результати оцінки методів (відсортовано за балами):\n\n"
+    for method, score in results:
+        result_text += f"{method}: {score} балів\n"
+    
+    # Додаємо до історії
+    history_entry = {
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "criteria": criteria_values,
+        "results": [{"method": m, "score": s} for m, s in results]  # Зберігаємо відсортовані результати
+    }
+    analysis_history.append(history_entry)
+    
+    # Зберігаємо введені значення для відображення
+    saved_data = {f"crit_{i}_val_{j}": str(criteria_values[i][j]) 
+                 for i in range(CRITERIA_COUNT) for j in range(VALUES_PER_CRITERION)}
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "criteria_count": range(CRITERIA_COUNT),
+        "values_count": range(VALUES_PER_CRITERION),
+        "criteria_names": CRITERIA_NAMES,
+        "test_methods": TEST_METHODS,
+        "result": result_text,
+        "form_data": saved_data,
+        "history_count": len(analysis_history)
+    })
+
+@app.post("/clear_history")
+async def clear_history():
+    global analysis_history
+    analysis_history = []
+    return {"message": "Історія очищена", "count": 0}
+
+@app.get("/export")
